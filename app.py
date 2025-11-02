@@ -1,13 +1,22 @@
-# app.py
 from flask import Flask, request, jsonify
 import pickle
 import pandas as pd
 import os
 
-#Config
+# Configuration
 MODEL_PATH = os.getenv("MODEL_PATH", "model/california_housing.pkl")
 
+# Initialize Flask app
 app = Flask(__name__)
+
+# Load model at startup
+try:
+    with open(MODEL_PATH, "rb") as f:
+        model = pickle.load(f)
+    print("Model loaded successfully!")
+except Exception as e:
+    print("Error loading model:", e)
+    model = None
 
 @app.route('/')
 def home():
@@ -37,9 +46,11 @@ def features():
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    if model is None:
+        return jsonify({"error": "Model not loaded on server."}), 500
+
     try:
         data = request.get_json()
-
         required = [
             "MedInc", "HouseAge", "AveRooms", "AveBedrms",
             "Population", "AveOccup", "Latitude", "Longitude"
@@ -56,8 +67,6 @@ def predict():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-    
-    
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
