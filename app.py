@@ -1,64 +1,63 @@
-#app.py
-import os
-import json
-import joblib
-import numpy as np
+# app.py
 from flask import Flask, request, jsonify
-
+import pickle
+import pandas as pd
+import os
 
 #Config
 MODEL_PATH = os.getenv("MODEL_PATH", "model/california_housing.pkl")
 
-#App
 app = Flask(__name__)
 
-#load once at startup
-try:
-    model = joblib.load(MODEL_PATH)
-except Exception as e:
-    #Fail fast with message
-    raise RuntimeError(f"Couldn't load the model from {MODEL_PATH}:{e}")
-       
-@app.get("/health")
-def health():
-    return{"status":"ok"}, 200
-    
-@app.post("/predict")
+@app.route('/')
+def home():
+    return jsonify({
+        "message": "Welcome to the California House Price Prediction API",
+        "note": "Use POST /predict with all housing feature values in JSON."
+    })
+
+@app.route('/features', methods=['GET'])
+def features():
+    return jsonify({
+        "required_features": [
+            "MedInc", "HouseAge", "AveRooms", "AveBedrms",
+            "Population", "AveOccup", "Latitude", "Longitude"
+        ],
+        "example_input": {
+            "MedInc": 4.5,
+            "HouseAge": 30,
+            "AveRooms": 5.5,
+            "AveBedrms": 1.1,
+            "Population": 1200,
+            "AveOccup": 3,
+            "Latitude": 37.77,
+            "Longitude": -122.42
+        }
+    })
+
+@app.route('/predict', methods=['POST'])
 def predict():
-    """
-    
-    Accepts wither :
-    {input":[[feature vector]]} #2d List
-    
-    or
-    
-    {"Input":[feature vector]  #1d list
-    """
-    
     try:
-        payload = request.get_json(force=True)
-        x = payload.get("input")
-        if x is None:
-            return jsonify(error="Missing input"), 400
+        data = request.get_json()
 
-        # Normalize 2d array
-        if isinstance(x, list) and (len(x) > 0) and not isinstance(x[0], list):
-            x = [x]
+        required = [
+            "MedInc", "HouseAge", "AveRooms", "AveBedrms",
+            "Population", "AveOccup", "Latitude", "Longitude"
+        ]
+        if not all(feature in data for feature in required):
+            return jsonify({"error": f"Missing one or more features: {required}"}), 400
 
-        X = np.array(x, dtype=float)
-        preds = model.predict(X)
-        preds = preds.tolist()
-        return jsonify(prediction=preds), 200
+        input_df = pd.DataFrame([data])
+        predicted_price = model.predict(input_df)[0]
 
+        return jsonify({
+            "predicted_price_usd": round(predicted_price, 2)
+        })
     except Exception as e:
-        return jsonify(error=str(e)), 500
-    
-    
-    
-if __name__ == "__main__":
-    #Render wil run with gunicorn
-    
-    app.run(host = "0.0.0.0", port = int(os.environ.get("PORT", 8000)))
-    
+        return jsonify({"error": str(e)}), 400
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
     
     
