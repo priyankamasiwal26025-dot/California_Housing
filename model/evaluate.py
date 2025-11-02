@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from sklearn.datasets import fetch_california_housing
 import pickle  
+import joblib
 
 # --- Load dataset ---
 data = fetch_california_housing(as_frame=True)
