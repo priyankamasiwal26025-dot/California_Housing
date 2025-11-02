@@ -1,6 +1,6 @@
 services:
     - type: wb
-      name: ml-flask-api
+      name: ch-flask-api
       env: python
       plan: free
       buildCommand: "pip install -r requirements.txt"
